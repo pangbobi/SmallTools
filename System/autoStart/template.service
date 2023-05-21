@@ -1,0 +1,14 @@
+[Unit]
+Description=<Functional_Description_of_This_Service>
+After=network.target
+
+[Service]
+Type=simple
+PIDFile=/var/run/<Service_Name>.pid
+User=root
+ExecStart=<The_Start_Command_for_This_Service>
+ExecStop=/bin/kill -s QUIT $MAINPID
+ExecReload=/bin/kill -s HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
