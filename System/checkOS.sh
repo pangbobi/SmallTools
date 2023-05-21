@@ -94,54 +94,77 @@ Install_Curl_Wget(){
     fi
 }
 
-# 编译安装Python
-Compile_Install_Python(){
-    local PY_VERSION=$1
-    local old_ver=$(cat $DIR_BASE/config.json |jq -r ".python.version")
-    if [ "${PY_VERSION}" != "${old_ver}" ];then
-        py_essential=$(cat $DIR_BASE/config.json |jq -r ".python.essential")
-        if [ ! "$py_essential" ];then
-            # 安装必要依赖
-            if [ "${PM}" == "apt-get" ];then
-                $PM install -y build-essential
-                $PM install -y uuid-dev tk-dev liblzma-dev libgdbm-dev libsqlite3-dev libbz2-dev libreadline-dev zlib1g-dev libncursesw5-dev libssl-dev libffi-dev
-            else
-                $PM groupinstall -y "Development tools"
-                $PM install -y tk-devel xz-devel gdbm-devel sqlite-devel bzip2-devel readline-devel zlib-devel openssl-devel libffi-devel
+# 初始化防火墙管理工具
+Init_Firewall(){
+    # 获取并记录SSH端口
+    sshPort=$(cat /etc/ssh/sshd_config | grep 'Port '|awk '{print $2}')
+    FPM=$(cat $DIR_BASE/config.json |jq -r '.firewall.FPM')
+    if [ ! $FPM ];then
+        cat $DIR_BASE/config.json |jq -r '.sshPort'="$sshPort" |sponge $DIR_BASE/config.json
+        # 默认开启防火墙
+        if [ "${PM}" = "apt-get" ]; then
+            apt-get install -y ufw
+            if [ -f "/usr/sbin/ufw" ];then
+                ufw allow $sshPort
+                ufw 80
+                ufw 443
+                echo y|ufw enable
+                ufw default deny
+                ufw reload
+                ufw status
+                FPM="ufw"
             fi
-            cat $DIR_BASE/config.json |jq -r '.python.essential'='"yes"' |sponge $DIR_BASE/config.json
+        else
+            if [ -f "/etc/init.d/iptables" ];then
+                iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport $sshPort -j ACCEPT
+                iptables -I INPUT -p udp -m state --state NEW -m udp --dport $sshPort -j ACCEPT
+                iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+                iptables -I INPUT -p udp -m state --state NEW -m udp --dport 80 -j ACCEPT
+                iptables -I INPUT -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+                iptables -I INPUT -p udp -m state --state NEW -m udp --dport 443 -j ACCEPT
+                iptables -A INPUT -p icmp --icmp-type any -j ACCEPT
+                iptables -A INPUT -s localhost -d localhost -j ACCEPT
+                iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+                iptables -P INPUT DROP
+                service iptables save
+                sed -i "s#IPTABLES_MODULES=\"\"#IPTABLES_MODULES=\"ip_conntrack_netbios_ns ip_conntrack_ftp ip_nat_ftp\"#" /etc/sysconfig/iptables-config
+                iptables_status=$(service iptables status | grep 'not running')
+                if [ "${iptables_status}" == '' ];then
+                    service iptables restart
+                fi
+                iptables -L
+                FPM="iptables"
+            else
+                AliyunCheck=$(cat /etc/redhat-release|grep "Aliyun Linux")
+                [ "${AliyunCheck}" ] && return
+                yum install firewalld -y
+                [ "${Centos8Check}" ] && yum reinstall python3-six -y
+                systemctl enable firewalld
+                systemctl start firewalld
+                firewall-cmd --set-default-zone=public > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=$sshPort/tcp > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=$sshPort/udp > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=80/tcp > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=80/udp > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=443/tcp > /dev/null 2>&1
+                firewall-cmd --permanent --zone=public --add-port=443/udp > /dev/null 2>&1
+                firewall-cmd --reload
+                firewall-cmd --zone=public --list-ports
+                FPM="firewall-cmd"
+            fi
         fi
-        # 下载指定版本
-        python_package="Python-$PY_VERSION.tgz"
-        python_path="/usr/local/python3"
-        wget https://www.python.org/ftp/python/$PY_VERSION/$python_package
-        tar xzvf $python_package
-        # 编译
-        cd Python-$PY_VERSION
-        ./configure --prefix=$python_path --with-ssl
-        mkdir $python_path
-        make && make install
-        # 建立软链
-        rm -rf /usr/bin/python /usr/bin/pip
-        ln -s $python_path/bin/python3 /usr/bin/python
-        ln -s $python_path/bin/pip3 /usr/bin/pip
-        cat $DIR_BASE/config.json |jq -r '.python.version'='"'$PY_VERSION'"' |sponge $DIR_BASE/config.json
-        cat $DIR_BASE/config.json |jq -r '.python.path'='"'$python_path'"' |sponge $DIR_BASE/config.json
-        # 通知并卸载安装包
-        Green_Info "Python ${PY_VERSION}已安装"
-        cd $DIR_BASE && rm -rf Python-$PY_VERSION*
-    else
-        Green_Info "之前已安装Python ${PY_VERSION}"
+        # 记录并返回防火墙管理工具
+        cat $DIR_BASE/config.json |jq -r '.firewall.FPM'='"'$FPM'"' |sponge $DIR_BASE/config.json
     fi
+    echo $FPM
 }
-
 
 # 主函数
 main(){
     Avaliable_Check
     Get_Pack_Manager
     Install_Curl_Wget
-    Compile_Install_Python "3.8.2"
+    Init_Firewall
 }
 # 执行主函数
 main
