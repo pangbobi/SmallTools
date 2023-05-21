@@ -12,4 +12,22 @@
     | PIDFile     | 存储服务进程的文件           | <Service_Name>                           | 用自己对该服务的命名替换掉包括尖括号在内的左侧默认值   |
     | ExecStart   | 服务启动命令，应使用绝对路径 | <The_Start_Command_for_This_Service>     | 用自定义服务的启动命令替换掉包括尖括号在内的左侧默认值 |
 
+
+## 如何使用
+
+1. 执行如下Shell脚本在命令行输入参数，自动部署
+
+    ```shell
+    source <(curl -sL https://raw.githubusercontent.com/pangbobi/SmallTools/dev/System/autoStart/customizeService.sh)
+    ```
+
+2. 核心操作
+
+    | 功能         | systemd命令                    | Init系统命令                 |
+    | ------------ | ------------------------------ | ---------------------------- |
+    | 启动服务     | systemctl start Service_Name   | service Service_Name start   |
+    | 停止服务     | systemctl stop Service_Name    | service Service_Name stop    |
+    | 重启服务     | systemctl restart Service_Name | service Service_Name restart |
+    | 查看服务状态 | systemctl status Service_Name  | service Service_Name status  |
+
     
