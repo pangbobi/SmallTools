@@ -88,8 +88,10 @@ Install_Curl_Wget(){
     if [ ! $(which wget) ];then
         Install_Package wget
     fi
-    Install_Package "jq moreutils"
-    echo '{"jq": "yes"}' > $DIR_BASE/config.json
+    if [ ! -f "$DIR_BASE/config.json" ];then
+        Install_Package "jq moreutils"
+        echo '{"jq-moreutils": "yes"}' > $DIR_BASE/config.json
+    fi
 }
 
 # 编译安装Python
@@ -97,13 +99,17 @@ Compile_Install_Python(){
     local PY_VERSION=$1
     local old_ver=$(cat $DIR_BASE/config.json |jq -r ".python.version")
     if [ "${PY_VERSION}" != "${old_ver}" ];then
-        # 安装必要依赖
-        if [ "${PM}" == "apt-get" ];then
-            $PM install -y build-essential
-            $PM install -y uuid-dev tk-dev liblzma-dev libgdbm-dev libsqlite3-dev libbz2-dev libreadline-dev zlib1g-dev libncursesw5-dev libssl-dev libffi-dev
-        else
-            $PM groupinstall -y "Development tools"
-            $PM install -y tk-devel xz-devel gdbm-devel sqlite-devel bzip2-devel readline-devel zlib-devel openssl-devel libffi-devel
+        py_essential=$(cat $DIR_BASE/config.json |jq -r ".python.essential")
+        if [ ! "$py_essential" ];then
+            # 安装必要依赖
+            if [ "${PM}" == "apt-get" ];then
+                $PM install -y build-essential
+                $PM install -y uuid-dev tk-dev liblzma-dev libgdbm-dev libsqlite3-dev libbz2-dev libreadline-dev zlib1g-dev libncursesw5-dev libssl-dev libffi-dev
+            else
+                $PM groupinstall -y "Development tools"
+                $PM install -y tk-devel xz-devel gdbm-devel sqlite-devel bzip2-devel readline-devel zlib-devel openssl-devel libffi-devel
+            fi
+            cat $DIR_BASE/config.json |jq -r '.python.essential'='"yes"' |sponge $DIR_BASE/config.json
         fi
         # 下载指定版本
         python_package="Python-$PY_VERSION.tgz"
@@ -112,7 +118,7 @@ Compile_Install_Python(){
         tar xzvf $python_package
         # 编译
         cd Python-$PY_VERSION
-        ./configure --prefix=$python_path --enable-shared
+        ./configure --prefix=$python_path --with-ssl
         mkdir $python_path
         make && make install
         # 建立软链
@@ -120,6 +126,7 @@ Compile_Install_Python(){
         ln -s $python_path/bin/python3 /usr/bin/python
         ln -s $python_path/bin/pip3 /usr/bin/pip
         cat $DIR_BASE/config.json |jq -r '.python.version'='"'$PY_VERSION'"' |sponge $DIR_BASE/config.json
+        cat $DIR_BASE/config.json |jq -r '.python.path'='"'$python_path'"' |sponge $DIR_BASE/config.json
         # 通知并卸载安装包
         Green_Info "Python ${PY_VERSION}已安装"
         cd $DIR_BASE && rm -rf Python-$PY_VERSION*
