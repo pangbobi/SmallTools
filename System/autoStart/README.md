@@ -15,7 +15,7 @@
 
 ## 如何使用
 
-1. 执行如下Shell脚本在命令行输入参数，自动部署
+1. 执行如下Shell脚本在命令行输入模板文件里的三个参数，自动部署
 
     ```shell
     source <(curl -sL https://raw.githubusercontent.com/pangbobi/SmallTools/dev/System/autoStart/customizeService.sh)
@@ -30,4 +30,3 @@
     | 重启服务     | systemctl restart Service_Name | service Service_Name restart |
     | 查看服务状态 | systemctl status Service_Name  | service Service_Name status  |
 
-    
