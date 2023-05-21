@@ -24,4 +24,13 @@
     source <(curl -sL https://raw.githubusercontent.com/pangbobi/SmallTools/dev/System/manageFirewall.sh)
     ```
 
+
+## 守护自定义进程
+
+1. 详情见```autoStart```子文件夹
+
+    ```shell
+    source <(curl -sL https://raw.githubusercontent.com/pangbobi/SmallTools/dev/System/autoStart/customizeService.sh)
+    ```
+
     
