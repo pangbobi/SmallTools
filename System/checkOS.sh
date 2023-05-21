@@ -95,6 +95,17 @@ Install_Curl_Wget(){
     fi
 }
 
+# 直至输入不为空
+Input_Avaliable_Content(){
+    local prompt=$1
+    while true; do
+        read -p "${Info}${prompt}：" content
+        [ -z "${content}" ] && Yellow_Warning "输入内容不可为空！" && continue
+        break
+    done
+    echo $content
+}
+
 # 主函数
 main(){
     Avaliable_Check
