@@ -99,7 +99,7 @@ Init_Firewall(){
     # 获取并记录SSH端口
     sshPort=$(cat /etc/ssh/sshd_config | grep 'Port '|awk '{print $2}')
     FPM=$(cat $DIR_BASE/config.json |jq -r '.firewall.FPM')
-    if [ ! $FPM ];then
+    if [ "$FPM" == "null" ];then
         cat $DIR_BASE/config.json |jq -r '.sshPort'="$sshPort" |sponge $DIR_BASE/config.json
         # 默认开启防火墙
         if [ "${PM}" = "apt-get" ]; then
