@@ -33,7 +33,7 @@ Avaliable_Check(){
         Red_Info "抱歉, 当脚本不支持32位系统!";
     fi
     # 系统版本限制
-    Centos6Check=$(cat /etc/redhat-release | grep ' 6.' | grep -iE 'centos|Red Hat')
+    Centos6Check=$([ -f /etc/redhat-release ] && cat /etc/redhat-release | grep ' 6.' | grep -iE 'centos|Red Hat')
     if [ "${Centos6Check}" ];then
         Red_Info "Centos6不支持此脚本，请更换Centos7/8使用此脚本！"
         exit 1
